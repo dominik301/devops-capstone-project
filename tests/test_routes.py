@@ -124,3 +124,69 @@ class TestAccountService(TestCase):
         self.assertEqual(response.status_code, status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
 
     # ADD YOUR TEST CASES HERE ...
+
+    def test_read_an_account(self):
+        """It should Read an account"""
+        test_account = self._create_accounts(1)[0]
+        response = self.client.get(f"{BASE_URL}/{test_account.id}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(data["name"], test_account.name)
+
+    def test_account_not_found(self):
+        """It should not Read an account that is not found"""
+        response = self.client.get(f"{BASE_URL}/0")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        data = response.get_json()
+        self.assertIn("was not found", data["message"])
+
+    def test_update_account(self):
+        """It should Update an account"""
+        test_account = self._create_accounts(1)[0]
+        test_account.name = 'Karl Schmitt'
+        response = self.client.put(f"{BASE_URL}/{test_account.id}", json=test_account.serialize())
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(data["name"], 'Karl Schmitt')
+
+    def test_update_account_not_found(self):
+        """It should not Update an account that is not found"""
+        test_account = self._create_accounts(1)[0]
+        test_account.name = 'Karl Schmitt'
+        response = self.client.put(f"{BASE_URL}/2", json=test_account.serialize())
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_list_accounts(self):
+        """It should List all accounts"""
+        num = 3
+        _ = self._create_accounts(num)[0]
+        response = self.client.get(f"{BASE_URL}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), num)
+
+    def test_list_accounts_empty(self):
+        """It should return an empty list when there no accounts"""
+        response = self.client.get(f"{BASE_URL}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        self.assertEqual(len(data), 0)
+
+    def test_delete_account(self):
+        """It should DELETE an account"""
+        test_account = self._create_accounts(5)[0]
+        initial_count = self.get_account_count()
+        response = self.client.delete(f"{BASE_URL}/{test_account.id}")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(len(response.data), 0)
+        response = self.client.get(f"{BASE_URL}/{test_account.id}")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(self.get_account_count(), initial_count - 1)
+
+    def get_account_count(self):
+        """save the current number of accounts"""
+        response = self.client.get(f"{BASE_URL}")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.get_json()
+        # logging.debug("data = %s", data)
+        return len(data)
